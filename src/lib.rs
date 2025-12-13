@@ -1,8 +1,7 @@
-use mdbook::{
-    book::{Book, Chapter},
-    errors::Error,
-    preprocess::{Preprocessor, PreprocessorContext},
-    BookItem,
+use mdbook_preprocessor::{
+    book::{Book, BookItem, Chapter},
+    errors::Result,
+    Preprocessor, PreprocessorContext,
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -22,37 +21,30 @@ impl Preprocessor for ReadingTime {
         "reading-time"
     }
 
-    fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {
-        let mut error: Option<Error> = None;
-
-        let words_per_minute: usize = if let Some(words_per_minute) = ctx
+    fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book> {
+        let words_per_minute: usize = ctx
             .config
-            .get("preprocessor.reading-time.words-per-minute")
-            .and_then(|v| v.as_integer())
-        {
-            words_per_minute as usize
-        } else {
-            WORDS_PER_MINUTE
-        };
+            .get::<usize>("preprocessor.reading-time.words-per-minute")
+            .ok()
+            .flatten()
+            .unwrap_or(WORDS_PER_MINUTE);
 
         let mut book = book;
         book.for_each_mut(|item: &mut BookItem| {
             if let BookItem::Chapter(ref mut chapter) = *item {
-                if let Err(err) = handle_chapter(chapter, words_per_minute) {
-                    error = Some(err)
-                }
+                let _ = handle_chapter(chapter, words_per_minute);
             }
         });
 
         Ok(book)
     }
 
-    fn supports_renderer(&self, renderer: &str) -> bool {
-        renderer != "not-supported"
+    fn supports_renderer(&self, renderer: &str) -> Result<bool> {
+        Ok(renderer != "not-supported")
     }
 }
 
-fn handle_chapter(chapter: &mut Chapter, words_per_minute: usize) -> Result<(), Error> {
+fn handle_chapter(chapter: &mut Chapter, words_per_minute: usize) -> Result<()> {
     let content = chapter.content.as_str();
     let word_count = content.unicode_words().count();
     let reading_time = word_count / words_per_minute;
@@ -85,7 +77,6 @@ mod test {
                         "book": {
                             "authors": ["AUTHOR"],
                             "language": "en",
-                            "multilingual": false,
                             "src": "src",
                             "title": "TITLE"
                         },
@@ -94,10 +85,10 @@ mod test {
                         }
                     },
                     "renderer": "html",
-                    "mdbook_version": "0.4.21"
+                    "mdbook_version": "0.5.1"
                 },
                 {
-                    "sections": [
+                    "items": [
                         {
                             "Chapter": {
                                 "name": "Chapter 1",
@@ -115,7 +106,7 @@ mod test {
             ]"##;
         let input_json = input_json.as_bytes();
 
-        let (ctx, book) = mdbook::preprocess::CmdPreprocessor::parse_input(input_json).unwrap();
+        let (ctx, book) = mdbook_preprocessor::parse_input(input_json).unwrap();
         let result = ReadingTime::new().run(&ctx, book);
         assert!(result.is_ok());
 

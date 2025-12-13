@@ -1,7 +1,7 @@
 [package]
 authors = ["Pawel Urbanek <contact@pawelurbanek.com>"]
 name = "mdbook-reading-time"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 description = "mdbook preprocessor that calculates the reading time and word count of each chapter."
 license = "MIT"
@@ -10,8 +10,7 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 clap = "4.5.20"
-mdbook = { version = "0.4.*", default-features = false }
-semver = "1.0.23"
+mdbook-preprocessor = "0.5"
 serde_json = "1.0.132"
 unicode-segmentation = "1.12.0"
 
